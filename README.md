@@ -1,9 +1,3 @@
-Here's a significantly enhanced and more attractive version of your `README.md` for the **Practical Agentic AI with LangGraph** GitHub repository.
-
-This revision improves clarity, structure, aesthetics, and professionalism, while also making it easier for learners to navigate and get excited about the course.
-
----
-
 # 🧠 Practical Agentic AI with LangGraph
 
 Welcome to the **official GitHub repository** for the course **"Practical Agentic AI with LangGraph"** — your hands-on journey into building intelligent, autonomous systems using cutting-edge agentic AI patterns and the powerful **LangGraph** framework.
