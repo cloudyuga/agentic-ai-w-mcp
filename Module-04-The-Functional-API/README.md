@@ -1,5 +1,3 @@
-
-````markdown
 # 🐍 Module 4: The Functional API  
 ## Building Workflows with Native Python
 
@@ -122,14 +120,3 @@ graph_workflow.visualize("graph.png")
 from IPython.display import Image
 Image("graph.png")
 ```
-
----
-
-## 🔗 Open in Google Colab
-
-| Lab                            | Open Link                                                                                                                                                                                                    |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Lab 1: `@entrypoint` & `@task` | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/your-repo/blob/main/Module-04-The-Functional-API/lab_1_entrypoint_and_task.py)         |
-| Lab 2: Human-in-the-Loop       | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/your-repo/blob/main/Module-04-The-Functional-API/lab_2_human_in_the_loop_interrupt.py) |
-| Lab 3: Multi-stage Approval    | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/your-repo/blob/main/Module-04-The-Functional-API/lab_3_multi_stage_approval.py)        |
-| Lab 4: Functional vs Graph     | [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/your-repo/blob/main/Module-04-The-Functional-API/lab_4_api_comparison.py)              |
