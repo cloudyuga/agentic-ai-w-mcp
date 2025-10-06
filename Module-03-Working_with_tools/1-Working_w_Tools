@@ -1,0 +1,976 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "module3_title"
+      },
+      "source": [
+        "# Module 3: From LangGraph Nodes to LangChain Tools with @tool Decorator\n",
+        "\n",
+        "**Building on Modules 1 & 2**: \n",
+        "- Module 1: Built agents using `create_agent()` with plain Python functions\n",
+        "- Module 2: Learned LangGraph fundamentals with nodes and edges\n",
+        "- Module 3: **Transform nodes into professional tools using @tool decorator**\n",
+        "\n",
+        "**Why use @tool decorator?** \n",
+        "- Automatic schema generation for LLM tool calling\n",
+        "- Better documentation and type validation\n",
+        "- Seamless integration with LangChain ecosystem\n",
+        "- Enhanced error handling and debugging\n",
+        "- Industry-standard approach for LangChain 1.0\n",
+        "\n",
+        "**Time:** 2-3 hours"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "setup_title"
+      },
+      "source": [
+        "## Setup: Install Dependencies"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "install_deps"
+      },
+      "outputs": [],
+      "source": [
+        "# Install LangChain 1.0 alpha packages\n",
+        "!pip install --pre -U langchain langchain-openai langgraph"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "api_key_title"
+      },
+      "source": [
+        "## Setup: Configure OpenAI API Key"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "setup_api_key"
+      },
+      "outputs": [],
+      "source": [
+        "# Retrieve the API key from Colab's secrets\n",
+        "from google.colab import userdata\n",
+        "import os\n",
+        "\n",
+        "OPENAI_API_KEY = userdata.get('OPENAI_API_KEY')\n",
+        "os.environ['OPENAI_API_KEY'] = OPENAI_API_KEY\n",
+        "\n",
+        "print(\"✅ API Key configured!\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "comparison_title"
+      },
+      "source": [
+        "---\n",
+        "# Lab 1: Understanding the Difference - Plain Functions vs @tool\n",
+        "\n",
+        "**Objective:** Compare plain Python functions (used as nodes) with @tool decorated functions.\n",
+        "\n",
+        "**Scenario:** Same HR tools from Module 1, but showing the evolution"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "comparison_imports"
+      },
+      "source": [
+        "## Part 1: Plain Functions (The Old Way)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "plain_functions"
+      },
+      "outputs": [],
+      "source": [
+        "# Old approach: Plain Python functions\n",
+        "def get_employee_info(employee_id: str) -> str:\n",
+        "    \"\"\"Get employee information by ID.\"\"\"\n",
+        "    employees = {\n",
+        "        \"101\": \"Priya Sharma - Engineering - Senior Developer\",\n",
+        "        \"102\": \"Rahul Verma - Engineering - Manager\",\n",
+        "        \"103\": \"Anjali Patel - HR - Director\",\n",
+        "        \"104\": \"Arjun Reddy - Sales - Team Lead\",\n",
+        "        \"105\": \"Sneha Gupta - Marketing - Specialist\"\n",
+        "    }\n",
+        "    return employees.get(employee_id, f\"Employee {employee_id} not found\")\n",
+        "\n",
+        "def check_leave_balance(employee_id: str) -> str:\n",
+        "    \"\"\"Check remaining leave days for an employee by ID.\"\"\"\n",
+        "    leave_data = {\n",
+        "        \"101\": \"Priya Sharma has 12 days of leave remaining\",\n",
+        "        \"102\": \"Rahul Verma has 8 days of leave remaining\",\n",
+        "        \"103\": \"Anjali Patel has 15 days of leave remaining\",\n",
+        "        \"104\": \"Arjun Reddy has 10 days of leave remaining\",\n",
+        "        \"105\": \"Sneha Gupta has 5 days of leave remaining\"\n",
+        "    }\n",
+        "    return leave_data.get(employee_id, f\"Leave data for employee {employee_id} not found\")\n",
+        "\n",
+        "# Test plain functions\n",
+        "print(\"Plain Function Results:\")\n",
+        "print(\"=\" * 50)\n",
+        "print(get_employee_info(\"101\"))\n",
+        "print(check_leave_balance(\"101\"))\n",
+        "print(\"\\n⚠️  Problem: No automatic schema, no validation, no integration with LLM tool calling\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "tool_decorator_intro"
+      },
+      "source": [
+        "## Part 2: @tool Decorator (The New Way) ✨\n",
+        "\n",
+        "**Key Benefits:**\n",
+        "- Automatic schema generation from type hints\n",
+        "- Built-in documentation from docstrings\n",
+        "- Ready for LLM tool calling\n",
+        "- Better error handling"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "tool_decorator_code"
+      },
+      "outputs": [],
+      "source": [
+        "from langchain_core.tools import tool\n",
+        "from typing import Annotated\n",
+        "\n",
+        "# New approach: @tool decorator\n",
+        "@tool\n",
+        "def get_employee_info_tool(employee_id: Annotated[str, \"The unique employee ID to look up\"]) -> str:\n",
+        "    \"\"\"Get employee information by ID. Returns name, department, and position.\"\"\"\n",
+        "    employees = {\n",
+        "        \"101\": \"Priya Sharma - Engineering - Senior Developer\",\n",
+        "        \"102\": \"Rahul Verma - Engineering - Manager\",\n",
+        "        \"103\": \"Anjali Patel - HR - Director\",\n",
+        "        \"104\": \"Arjun Reddy - Sales - Team Lead\",\n",
+        "        \"105\": \"Sneha Gupta - Marketing - Specialist\"\n",
+        "    }\n",
+        "    return employees.get(employee_id, f\"Employee {employee_id} not found\")\n",
+        "\n",
+        "@tool\n",
+        "def check_leave_balance_tool(employee_id: Annotated[str, \"The employee ID to check leave balance for\"]) -> str:\n",
+        "    \"\"\"Check remaining leave days for an employee. Returns the number of leave days available.\"\"\"\n",
+        "    leave_data = {\n",
+        "        \"101\": \"Priya Sharma has 12 days of leave remaining\",\n",
+        "        \"102\": \"Rahul Verma has 8 days of leave remaining\",\n",
+        "        \"103\": \"Anjali Patel has 15 days of leave remaining\",\n",
+        "        \"104\": \"Arjun Reddy has 10 days of leave remaining\",\n",
+        "        \"105\": \"Sneha Gupta has 5 days of leave remaining\"\n",
+        "    }\n",
+        "    return leave_data.get(employee_id, f\"Leave data for employee {employee_id} not found\")\n",
+        "\n",
+        "# Inspect the tool properties\n",
+        "print(\"@tool Decorated Function Properties:\")\n",
+        "print(\"=\" * 50)\n",
+        "print(f\"Tool Name: {get_employee_info_tool.name}\")\n",
+        "print(f\"Description: {get_employee_info_tool.description}\")\n",
+        "print(f\"Args Schema: {get_employee_info_tool.args}\")\n",
+        "print(\"\\n✅ Benefits: Auto schema, validation, LLM-ready!\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "tool_usage"
+      },
+      "source": [
+        "## Part 3: Using Tools - Same Interface!"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "tool_usage_code"
+      },
+      "outputs": [],
+      "source": [
+        "# Tools can be called just like regular functions\n",
+        "print(\"Direct Tool Invocation:\")\n",
+        "print(\"=\" * 50)\n",
+        "result1 = get_employee_info_tool.invoke({\"employee_id\": \"101\"})\n",
+        "print(result1)\n",
+        "\n",
+        "result2 = check_leave_balance_tool.invoke({\"employee_id\": \"101\"})\n",
+        "print(result2)\n",
+        "\n",
+        "print(\"\\n✅ Same functionality, but now with schema and validation!\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "agent_integration_title"
+      },
+      "source": [
+        "---\n",
+        "# Lab 2: Using @tool with LangChain Agents\n",
+        "\n",
+        "**Objective:** Integrate @tool decorated functions with LangChain agents.\n",
+        "\n",
+        "**This is the power of @tool!** LLMs can now understand and use these tools automatically."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "agent_setup"
+      },
+      "outputs": [],
+      "source": [
+        "from langchain.agents import create_agent\n",
+        "from langchain_openai import ChatOpenAI\n",
+        "\n",
+        "# Create agent with @tool decorated functions\n",
+        "tools = [get_employee_info_tool, check_leave_balance_tool]\n",
+        "\n",
+        "agent = create_agent(\n",
+        "    model=\"openai:gpt-4o-mini\",\n",
+        "    tools=tools,\n",
+        "    prompt=\"You are an HR assistant. Help users with employee information and leave balance queries.\"\n",
+        ")\n",
+        "\n",
+        "print(\"✅ Agent created with @tool decorated functions!\")\n",
+        "print(f\"Number of tools available: {len(tools)}\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "agent_test"
+      },
+      "source": [
+        "## Test the Agent"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "agent_test_code"
+      },
+      "outputs": [],
+      "source": [
+        "# Test 1: Simple query\n",
+        "print(\"Test 1: Who is employee 101?\")\n",
+        "print(\"=\" * 70)\n",
+        "result = agent.invoke({\n",
+        "    \"messages\": [{\"role\": \"user\", \"content\": \"Who is employee 101?\"}]\n",
+        "})\n",
+        "print(result['messages'][-1].content)\n",
+        "\n",
+        "print(\"\\n\" + \"=\" * 70)\n",
+        "\n",
+        "# Test 2: Complex query requiring multiple tools\n",
+        "print(\"\\nTest 2: Tell me about employee 102 and their leave balance\")\n",
+        "print(\"=\" * 70)\n",
+        "result = agent.invoke({\n",
+        "    \"messages\": [{\"role\": \"user\", \"content\": \"Tell me about employee 102 and their leave balance\"}]\n",
+        "})\n",
+        "print(result['messages'][-1].content)\n",
+        "\n",
+        "print(\"\\n✅ Agent automatically selected the right tools!\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "advanced_tools_title"
+      },
+      "source": [
+        "---\n",
+        "# Lab 3: Advanced @tool Features\n",
+        "\n",
+        "**Objective:** Explore advanced @tool decorator features:\n",
+        "- Custom tool names\n",
+        "- Custom descriptions\n",
+        "- Pydantic models for complex inputs\n",
+        "- Error handling"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "custom_names"
+      },
+      "source": [
+        "## Part 1: Custom Names and Descriptions"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "custom_names_code"
+      },
+      "outputs": [],
+      "source": [
+        "from pydantic import BaseModel, Field\n",
+        "\n",
+        "# Custom tool with explicit name\n",
+        "@tool(\"search_employee\")\n",
+        "def find_employee(query: Annotated[str, \"Employee name or ID to search for\"]) -> str:\n",
+        "    \"\"\"Search for an employee by name or ID. Returns detailed employee information.\"\"\"\n",
+        "    employees = {\n",
+        "        \"priya\": \"Employee ID: 101 - Priya Sharma - Engineering - Senior Developer\",\n",
+        "        \"rahul\": \"Employee ID: 102 - Rahul Verma - Engineering - Manager\",\n",
+        "        \"101\": \"Employee ID: 101 - Priya Sharma - Engineering - Senior Developer\",\n",
+        "        \"102\": \"Employee ID: 102 - Rahul Verma - Engineering - Manager\"\n",
+        "    }\n",
+        "    query_lower = query.lower()\n",
+        "    return employees.get(query_lower, f\"No employee found matching '{query}'\")\n",
+        "\n",
+        "print(f\"Tool Name: {find_employee.name}\")\n",
+        "print(f\"Description: {find_employee.description}\")\n",
+        "print(\"\\n✅ Custom name makes it clearer for LLMs to choose the right tool!\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "pydantic_models"
+      },
+      "source": [
+        "## Part 2: Using Pydantic Models for Complex Inputs"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "pydantic_code"
+      },
+      "outputs": [],
+      "source": [
+        "class LeaveRequestInput(BaseModel):\n",
+        "    \"\"\"Input schema for submitting a leave request.\"\"\"\n",
+        "    employee_id: str = Field(description=\"The employee ID submitting the leave request\")\n",
+        "    start_date: str = Field(description=\"Leave start date in YYYY-MM-DD format\")\n",
+        "    end_date: str = Field(description=\"Leave end date in YYYY-MM-DD format\")\n",
+        "    reason: str = Field(description=\"Reason for the leave request\")\n",
+        "\n",
+        "@tool(args_schema=LeaveRequestInput)\n",
+        "def submit_leave_request(employee_id: str, start_date: str, end_date: str, reason: str) -> str:\n",
+        "    \"\"\"Submit a leave request for an employee. Returns confirmation with request ID.\"\"\"\n",
+        "    import random\n",
+        "    request_id = f\"LR-{random.randint(1000, 9999)}\"\n",
+        "    return f\"Leave request {request_id} submitted successfully for employee {employee_id} from {start_date} to {end_date}. Reason: {reason}\"\n",
+        "\n",
+        "# Inspect the schema\n",
+        "print(\"Tool with Pydantic Schema:\")\n",
+        "print(\"=\" * 50)\n",
+        "print(f\"Tool Name: {submit_leave_request.name}\")\n",
+        "print(f\"Args Schema: {submit_leave_request.args}\")\n",
+        "print(\"\\n✅ Pydantic provides rich validation and documentation!\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "test_pydantic"
+      },
+      "source": [
+        "## Test the Complex Tool"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "test_pydantic_code"
+      },
+      "outputs": [],
+      "source": [
+        "# Test the tool\n",
+        "result = submit_leave_request.invoke({\n",
+        "    \"employee_id\": \"101\",\n",
+        "    \"start_date\": \"2025-11-01\",\n",
+        "    \"end_date\": \"2025-11-05\",\n",
+        "    \"reason\": \"Vacation\"\n",
+        "})\n",
+        "\n",
+        "print(\"Leave Request Result:\")\n",
+        "print(\"=\" * 50)\n",
+        "print(result)\n",
+        "print(\"\\n✅ Complex inputs handled with ease!\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "error_handling"
+      },
+      "source": [
+        "## Part 3: Error Handling in Tools"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "error_handling_code"
+      },
+      "outputs": [],
+      "source": [
+        "from langchain.tools.base import ToolException\n",
+        "\n",
+        "@tool\n",
+        "def calculate_salary(employee_id: Annotated[str, \"Employee ID to calculate salary for\"]) -> str:\n",
+        "    \"\"\"Calculate monthly salary for an employee. Returns salary details.\"\"\"\n",
+        "    salaries = {\n",
+        "        \"101\": \"Monthly Salary: ₹1,00,000\",\n",
+        "        \"102\": \"Monthly Salary: ₹1,50,000\",\n",
+        "        \"103\": \"Monthly Salary: ₹2,00,000\"\n",
+        "    }\n",
+        "    \n",
+        "    if employee_id not in salaries:\n",
+        "        raise ToolException(f\"Salary information not available for employee {employee_id}\")\n",
+        "    \n",
+        "    return salaries[employee_id]\n",
+        "\n",
+        "# Test with valid ID\n",
+        "print(\"Test with valid employee ID:\")\n",
+        "try:\n",
+        "    result = calculate_salary.invoke({\"employee_id\": \"101\"})\n",
+        "    print(f\"✅ {result}\")\n",
+        "except Exception as e:\n",
+        "    print(f\"❌ Error: {e}\")\n",
+        "\n",
+        "# Test with invalid ID\n",
+        "print(\"\\nTest with invalid employee ID:\")\n",
+        "try:\n",
+        "    result = calculate_salary.invoke({\"employee_id\": \"999\"})\n",
+        "    print(f\"✅ {result}\")\n",
+        "except ToolException as e:\n",
+        "    print(f\"❌ Tool Exception: {e}\")\n",
+        "\n",
+        "print(\"\\n✅ Proper error handling makes tools more robust!\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "langgraph_integration_title"
+      },
+      "source": [
+        "---\n",
+        "# Lab 4: Integrating @tool with LangGraph Workflows\n",
+        "\n",
+        "**Objective:** Combine LangGraph workflows with @tool decorated functions.\n",
+        "\n",
+        "**This is the BEST of both worlds:**\n",
+        "- LangGraph for workflow control\n",
+        "- @tool for LLM-ready functions"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "langgraph_imports"
+      },
+      "outputs": [],
+      "source": [
+        "from typing import TypedDict, Annotated\n",
+        "from langgraph.graph import StateGraph, START, END\n",
+        "from langgraph.graph.message import add_messages\n",
+        "from langchain_openai import ChatOpenAI\n",
+        "\n",
+        "llm = ChatOpenAI(model=\"gpt-4o-mini\", temperature=0)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "workflow_tools"
+      },
+      "source": [
+        "## Step 1: Define Tools"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "workflow_tools_code"
+      },
+      "outputs": [],
+      "source": [
+        "# Define HR tools with @tool decorator\n",
+        "@tool\n",
+        "def validate_employee_id(employee_id: Annotated[str, \"Employee ID to validate\"]) -> str:\n",
+        "    \"\"\"Validate if an employee ID exists in the system.\"\"\"\n",
+        "    valid_ids = [\"101\", \"102\", \"103\", \"104\", \"105\"]\n",
+        "    if employee_id in valid_ids:\n",
+        "        return f\"✅ Employee ID {employee_id} is valid\"\n",
+        "    return f\"❌ Employee ID {employee_id} is invalid\"\n",
+        "\n",
+        "@tool\n",
+        "def get_employee_details(employee_id: Annotated[str, \"Employee ID to get details for\"]) -> str:\n",
+        "    \"\"\"Get detailed information about an employee.\"\"\"\n",
+        "    details = {\n",
+        "        \"101\": \"Priya Sharma | Engineering | Senior Developer | Joined: 2020\",\n",
+        "        \"102\": \"Rahul Verma | Engineering | Manager | Joined: 2018\",\n",
+        "        \"103\": \"Anjali Patel | HR | Director | Joined: 2015\"\n",
+        "    }\n",
+        "    return details.get(employee_id, \"Employee not found\")\n",
+        "\n",
+        "@tool\n",
+        "def calculate_benefits(employee_id: Annotated[str, \"Employee ID to calculate benefits for\"]) -> str:\n",
+        "    \"\"\"Calculate employee benefits based on tenure and position.\"\"\"\n",
+        "    return f\"Benefits for {employee_id}: Health Insurance, PF, Bonus, Leave Encashment\"\n",
+        "\n",
+        "print(\"✅ All tools defined with @tool decorator!\")\n",
+        "print(f\"Tools: {validate_employee_id.name}, {get_employee_details.name}, {calculate_benefits.name}\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "workflow_state"
+      },
+      "source": [
+        "## Step 2: Define Workflow State"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "workflow_state_code"
+      },
+      "outputs": [],
+      "source": [
+        "class EmployeeQueryState(TypedDict):\n",
+        "    \"\"\"State for employee query workflow.\"\"\"\n",
+        "    employee_id: str\n",
+        "    validation_result: str\n",
+        "    employee_details: str\n",
+        "    benefits: str\n",
+        "    messages: Annotated[list, add_messages]\n",
+        "    final_report: str\n",
+        "\n",
+        "print(\"✅ Workflow state defined!\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "workflow_nodes"
+      },
+      "source": [
+        "## Step 3: Create Workflow Nodes Using Tools"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "workflow_nodes_code"
+      },
+      "outputs": [],
+      "source": [
+        "def validate_node(state: EmployeeQueryState):\n",
+        "    \"\"\"Node 1: Validate employee using @tool.\"\"\"\n",
+        "    print(f\"📋 Validating employee {state['employee_id']}...\")\n",
+        "    result = validate_employee_id.invoke({\"employee_id\": state['employee_id']})\n",
+        "    return {\n",
+        "        \"validation_result\": result,\n",
+        "        \"messages\": [(\"assistant\", result)]\n",
+        "    }\n",
+        "\n",
+        "def fetch_details_node(state: EmployeeQueryState):\n",
+        "    \"\"\"Node 2: Fetch employee details using @tool.\"\"\"\n",
+        "    print(f\"📄 Fetching details for employee {state['employee_id']}...\")\n",
+        "    if \"invalid\" in state['validation_result'].lower():\n",
+        "        return {\"employee_details\": \"Skipped - Invalid ID\"}\n",
+        "    \n",
+        "    result = get_employee_details.invoke({\"employee_id\": state['employee_id']})\n",
+        "    return {\n",
+        "        \"employee_details\": result,\n",
+        "        \"messages\": [(\"assistant\", result)]\n",
+        "    }\n",
+        "\n",
+        "def calculate_benefits_node(state: EmployeeQueryState):\n",
+        "    \"\"\"Node 3: Calculate benefits using @tool.\"\"\"\n",
+        "    print(f\"💰 Calculating benefits for employee {state['employee_id']}...\")\n",
+        "    if \"invalid\" in state['validation_result'].lower():\n",
+        "        return {\"benefits\": \"Skipped - Invalid ID\"}\n",
+        "    \n",
+        "    result = calculate_benefits.invoke({\"employee_id\": state['employee_id']})\n",
+        "    return {\n",
+        "        \"benefits\": result,\n",
+        "        \"messages\": [(\"assistant\", result)]\n",
+        "    }\n",
+        "\n",
+        "def generate_report_node(state: EmployeeQueryState):\n",
+        "    \"\"\"Node 4: Generate final report.\"\"\"\n",
+        "    print(f\"📊 Generating final report...\")\n",
+        "    report = f\"\"\"\n",
+        "Employee Query Report\n",
+        "{'=' * 50}\n",
+        "Employee ID: {state['employee_id']}\n",
+        "Validation: {state['validation_result']}\n",
+        "Details: {state['employee_details']}\n",
+        "Benefits: {state['benefits']}\n",
+        "{'=' * 50}\n",
+        "    \"\"\"\n",
+        "    return {\n",
+        "        \"final_report\": report,\n",
+        "        \"messages\": [(\"assistant\", \"Report generated successfully\")]\n",
+        "    }\n",
+        "\n",
+        "print(\"✅ All workflow nodes created using @tool functions!\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "workflow_build"
+      },
+      "source": [
+        "## Step 4: Build the Workflow"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "workflow_build_code"
+      },
+      "outputs": [],
+      "source": [
+        "# Create workflow\n",
+        "workflow = StateGraph(EmployeeQueryState)\n",
+        "\n",
+        "# Add nodes\n",
+        "workflow.add_node(\"validate\", validate_node)\n",
+        "workflow.add_node(\"fetch_details\", fetch_details_node)\n",
+        "workflow.add_node(\"calculate_benefits\", calculate_benefits_node)\n",
+        "workflow.add_node(\"generate_report\", generate_report_node)\n",
+        "\n",
+        "# Add edges\n",
+        "workflow.add_edge(START, \"validate\")\n",
+        "workflow.add_edge(\"validate\", \"fetch_details\")\n",
+        "workflow.add_edge(\"fetch_details\", \"calculate_benefits\")\n",
+        "workflow.add_edge(\"calculate_benefits\", \"generate_report\")\n",
+        "workflow.add_edge(\"generate_report\", END)\n",
+        "\n",
+        "# Compile\n",
+        "app = workflow.compile()\n",
+        "\n",
+        "print(\"✅ Workflow compiled!\")\n",
+        "print(\"Flow: START → validate → fetch_details → calculate_benefits → generate_report → END\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "workflow_test"
+      },
+      "source": [
+        "## Step 5: Test the Workflow"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "workflow_test_code"
+      },
+      "outputs": [],
+      "source": [
+        "# Test with valid employee\n",
+        "initial_state = {\n",
+        "    \"employee_id\": \"101\",\n",
+        "    \"validation_result\": \"\",\n",
+        "    \"employee_details\": \"\",\n",
+        "    \"benefits\": \"\",\n",
+        "    \"messages\": [],\n",
+        "    \"final_report\": \"\"\n",
+        "}\n",
+        "\n",
+        "print(\"Running workflow for employee 101...\")\n",
+        "print(\"=\" * 70)\n",
+        "result = app.invoke(initial_state)\n",
+        "print(\"\\nFinal Report:\")\n",
+        "print(result['final_report'])\n",
+        "\n",
+        "print(\"\\n✅ Workflow completed using @tool decorated functions!\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "comparison_summary"
+      },
+      "source": [
+        "---\n",
+        "# Summary: Plain Functions vs @tool Decorator\n",
+        "\n",
+        "## Comparison Table\n",
+        "\n",
+        "| Feature | Plain Functions | @tool Decorator |\n",
+        "|---------|----------------|------------------|\n",
+        "| **Schema Generation** | ❌ Manual | ✅ Automatic |\n",
+        "| **LLM Integration** | ❌ Limited | ✅ Native |\n",
+        "| **Type Validation** | ❌ Optional | ✅ Built-in |\n",
+        "| **Documentation** | ❌ Separate | ✅ Integrated |\n",
+        "| **Error Handling** | ❌ Manual | ✅ Enhanced |\n",
+        "| **Agent Compatibility** | ⚠️  Requires wrapper | ✅ Direct |\n",
+        "| **Best For** | Simple nodes | LLM-ready tools |\n",
+        "\n",
+        "## When to Use @tool?\n",
+        "\n",
+        "✅ **Use @tool when:**\n",
+        "- Building agents that need LLM tool calling\n",
+        "- Want automatic schema generation\n",
+        "- Need robust type validation\n",
+        "- Creating reusable tools\n",
+        "- Working with LangChain ecosystem\n",
+        "\n",
+        "⚠️ **Use plain functions when:**\n",
+        "- Building simple workflow nodes\n",
+        "- Don't need LLM integration\n",
+        "- Internal processing only\n",
+        "- Maximum flexibility needed"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "exercises_title"
+      },
+      "source": [
+        "---\n",
+        "# 🎯 Exercises\n",
+        "\n",
+        "## Exercise 1: Create Custom Tools\n",
+        "\n",
+        "Create three new @tool decorated functions:\n",
+        "1. `update_employee_info` - Update employee details\n",
+        "2. `approve_leave_request` - Approve/reject leave requests\n",
+        "3. `generate_payslip` - Generate monthly payslip\n",
+        "\n",
+        "**Requirements:**\n",
+        "- Use Pydantic models for complex inputs\n",
+        "- Add proper docstrings\n",
+        "- Include error handling"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "exercise1_code"
+      },
+      "outputs": [],
+      "source": [
+        "# Your code here\n",
+        "# Hint: Use @tool decorator and Pydantic BaseModel\n",
+        "\n",
+        "@tool\n",
+        "def update_employee_info(employee_id: str, field: str, value: str) -> str:\n",
+        "    \"\"\"TODO: Implement this tool.\"\"\"\n",
+        "    pass\n",
+        "\n",
+        "# TODO: Implement approve_leave_request and generate_payslip"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "exercise2"
+      },
+      "source": [
+        "## Exercise 2: Build a Tool-Powered Workflow\n",
+        "\n",
+        "Create a LangGraph workflow that:\n",
+        "1. Takes an employee ID\n",
+        "2. Validates the employee\n",
+        "3. Checks their leave balance\n",
+        "4. Processes a leave request if balance is sufficient\n",
+        "5. Generates a confirmation report\n",
+        "\n",
+        "**Use only @tool decorated functions!**"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "exercise2_code"
+      },
+      "outputs": [],
+      "source": [
+        "# Your code here\n",
+        "# Hint: Define tools first, then create workflow nodes\n",
+        "\n",
+        "# TODO: Define tools\n",
+        "# TODO: Create State\n",
+        "# TODO: Create nodes\n",
+        "# TODO: Build workflow\n",
+        "# TODO: Test"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "exercise3"
+      },
+      "source": [
+        "## Exercise 3: Error Handling Challenge\n",
+        "\n",
+        "Enhance the `calculate_salary` tool to:\n",
+        "1. Validate employee ID format (must be 3 digits)\n",
+        "2. Check if employee exists\n",
+        "3. Handle division errors when calculating bonuses\n",
+        "4. Return meaningful error messages\n",
+        "\n",
+        "Test with: valid ID, invalid format, non-existent ID"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "exercise3_code"
+      },
+      "outputs": [],
+      "source": [
+        "# Your code here\n",
+        "from langchain.tools.base import ToolException\n",
+        "\n",
+        "@tool\n",
+        "def enhanced_calculate_salary(employee_id: str) -> str:\n",
+        "    \"\"\"TODO: Add robust error handling.\"\"\"\n",
+        "    # TODO: Validate ID format\n",
+        "    # TODO: Check if employee exists\n",
+        "    # TODO: Calculate salary with error handling\n",
+        "    pass\n",
+        "\n",
+        "# TODO: Test cases"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "bonus_exercise"
+      },
+      "source": [
+        "## 🌟 Bonus Challenge: Advanced Tool Integration\n",
+        "\n",
+        "Create an agent that can:\n",
+        "1. Handle conversational queries about employees\n",
+        "2. Use multiple tools in sequence\n",
+        "3. Maintain context across queries\n",
+        "4. Generate comprehensive reports\n",
+        "\n",
+        "Example queries to support:\n",
+        "- \"Who is employee 101 and how many leave days do they have?\"\n",
+        "- \"Compare the leave balances of employees in Engineering\"\n",
+        "- \"Generate a benefits report for all managers\""
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "id": "bonus_code"
+      },
+      "outputs": [],
+      "source": [
+        "# Your code here\n",
+        "# This is open-ended - be creative!\n",
+        "# Hint: Combine create_agent, @tool, and LangGraph"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "conclusion"
+      },
+      "source": [
+        "---\n",
+        "# Conclusion\n",
+        "\n",
+        "**What you learned:**\n",
+        "1. ✅ The difference between plain functions and @tool decorator\n",
+        "2. ✅ How to create tools with automatic schema generation\n",
+        "3. ✅ Using Pydantic models for complex inputs\n",
+        "4. ✅ Error handling in tools\n",
+        "5. ✅ Integrating @tool with LangGraph workflows\n",
+        "6. ✅ Building production-ready agents with tools\n",
+        "\n",
+        "**Key Takeaways:**\n",
+        "- **@tool decorator** is the standard way to create LLM-ready tools\n",
+        "- **Automatic schema generation** saves time and reduces errors\n",
+        "- **Type hints and docstrings** are critical for tool quality\n",
+        "- **Tools work seamlessly** with both agents and workflows\n",
+        "\n",
+        "**Next Steps:**\n",
+        "- Explore tool artifacts (Module 4)\n",
+        "- Learn about tool streaming (Module 5)\n",
+        "- Build multi-agent systems (Module 6)\n",
+        "- Deploy production agents (Module 7)\n",
+        "\n",
+        "---\n",
+        "**Created with:** LangChain 1.0 + OpenAI + LangGraph\n",
+        "\n",
+        "**References:**\n",
+        "- [LangChain Tools Documentation](https://python.langchain.com/docs/concepts/tools/)\n",
+        "- [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)"
+      ]
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "display_name": "Python 3",
+      "language": "python",
+      "name": "python3"
+    },
+    "language_info": {
+      "codemirror_mode": {
+        "name": "ipython",
+        "version": 3
+      },
+      "file_extension": ".py",
+      "mimetype": "text/x-python",
+      "name": "python",
+      "nbconvert_exporter": "python",
+      "pygments_lexer": "ipython3",
+      "version": "3.11.0"
+    },
+    "colab": {
+      "provenance": []
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 0
+}
