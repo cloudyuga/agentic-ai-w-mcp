@@ -343,7 +343,7 @@ Some setups also expose Studio directly at:
 
 Try these example prompts in the Studio UI:
 
-- "What's the weather in San Francisco?"
+- "What's the weather in Bengaluru?"
 - "Calculate 15 times 23"
 - "What's the area of a circle with radius 5?"
 
