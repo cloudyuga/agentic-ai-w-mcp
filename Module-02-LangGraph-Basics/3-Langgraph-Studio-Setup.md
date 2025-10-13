@@ -121,7 +121,8 @@ You should see `(venv)` or `(langgraph)` at the start of your terminal prompt.
 pip install --upgrade pip
 
 # Install LangGraph 1.0 alpha and dependencies
-pip install --pre "langgraph>=1.0.0a0" "langgraph-cli>=1.0.0a0" langchain-openai langchain-core
+pip install --pre -U langgraph langchain-openai langchain-core "langgraph-cli[inmem]"
+
 
 # Verify installation
 langgraph --version
